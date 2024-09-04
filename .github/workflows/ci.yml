@@ -1,0 +1,81 @@
+name: Build and Release for Raspberry Pi
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+      - 'v*.*.*b'
+      - 'v*.*.*beta'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-arm-linux-gnueabihf libX11-dev
+
+    - name: Compile the binary
+      run: |
+        arm-linux-gnueabihf-gcc -Os -o blackpixel blackpixel.c
+
+    - name: Determine if prerelease
+      id: check_prerelease
+      run: |
+        if [[ "${GITHUB_REF##*/}" =~ b$|beta$ ]]; then
+          echo "PRE_RELEASE=true" >> $GITHUB_ENV
+        else
+          echo "PRE_RELEASE=false" >> $GITHUB_ENV
+        fi
+
+    - name: Create GitHub Release
+      id: create_release
+      uses: actions/create-release@v1
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        body: |
+          Binary for Raspberry Pi compiled using GitHub Actions.
+        draft: false
+        prerelease: ${{ env.PRE_RELEASE }}
+
+    - name: Upload binary to release
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./your-binary-name
+        asset_name: your-binary-name
+        asset_content_type: application/octet-stream
+
+    - name: Update latest-release tag (only for stable releases)
+      if: steps.check_prerelease.outputs.PRE_RELEASE == 'false'
+      run: |
+        git tag -f latest-release
+        git push -f origin latest-release
+
+    - name: Create or update latest-release GitHub Release (only for stable releases)
+      if: steps.check_prerelease.outputs.PRE_RELEASE == 'false'
+      id: create_latest_release
+      uses: actions/create-release@v1
+      with:
+        tag_name: latest-release
+        release_name: Latest Release
+        body: |
+          Latest stable binary for Raspberry Pi compiled using GitHub Actions.
+        draft: false
+        prerelease: false
+
+    - name: Upload binary to latest-release (only for stable releases)
+      if: steps.check_prerelease.outputs.PRE_RELEASE == 'false'
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ steps.create_latest_release.outputs.upload_url }}
+        asset_path: ./your-binary-name
+        asset_name: your-binary-name
+        asset_content_type: application/octet-stream
