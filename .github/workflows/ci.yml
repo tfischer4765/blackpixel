@@ -23,7 +23,7 @@ jobs:
 
     - name: Compile the binary
       run: |
-        arm-linux-gnueabihf-gcc -Os -o blackpixel blackpixel.c
+        arm-linux-gnueabihf-gcc -Os -o blackpixel blackpixel.c -lX11
 
     - name: Determine if prerelease
       id: check_prerelease
