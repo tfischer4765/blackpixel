@@ -16,15 +16,13 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Install dependencies
-      run: |
-        sudo dpkg --add-architecture armhf
-        sudo apt-get update
-        sudo apt-get install -y gcc-arm-linux-gnueabihf libx11-dev:armhf
+    - name: Set up Docker Buildx (if needed for multi-platform builds)
+      uses: docker/setup-buildx-action@v2
 
-    - name: Compile the binary
+    - name: Build Docker image and compile
       run: |
-        arm-linux-gnueabihf-gcc -Os -o blackpixel blackpixel.c -lX11
+        docker build -t raspberrypi-cross-compiler .
+        docker run --rm -v $(pwd):/build raspberrypi-cross-compiler
 
     - name: Determine if prerelease
       id: check_prerelease
